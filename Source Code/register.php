@@ -14,26 +14,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!in_array($role, ['admin', 'user'])) {
         $error = "Invalid role selection!";
-    } 
-    else {
-        $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-        $stmt->bind_param("ss", $username, $email);
-        $stmt->execute();
-        $stmt->store_result();
-        
-        if ($stmt->num_rows > 0) {
-            $error = "Username or Email already exists!";
-        } 
-        $stmt->close();
-    }
-
-    if($validation_result !== true) {
+    } elseif ($password !== $confirm_password) {
+        $error = "Passwords do not match!";
+    } elseif($validation_result !== true) {
         $error = $validation_result;
-    }
-    
-    if (!$error) {
+    }else {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
+    
         $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
 
