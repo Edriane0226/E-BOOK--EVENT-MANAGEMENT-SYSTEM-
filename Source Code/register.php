@@ -2,12 +2,14 @@
 session_start();
 include 'config.php';
 include 'navbar.php';
+include 'passwordValidation.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
     $confirm_password = trim($_POST['confirm_password']);
+    $validation_result = password_validation($password);
     $role = trim($_POST['role']);
 
     if (!in_array($role, ['admin', 'user'])) {
@@ -25,15 +27,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->close();
     }
 
-    if (!$error) {
-        if (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password) || !preg_match('/[\W]/', $password)) {
-            $error = "Password must be at least 8 characters long, include at least one uppercase letter, one number, and one special character!";
-        } 
-        elseif ($password !== $confirm_password) {
-            $error = "Passwords do not match!";
-        }
+    if($validation_result !== true) {
+        $error = $validation_result;
     }
-
     
     if (!$error) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);

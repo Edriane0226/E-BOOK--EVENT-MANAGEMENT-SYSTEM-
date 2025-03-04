@@ -97,6 +97,7 @@ $stmt->close();
             <p><strong>Role:</strong> <span class="role-badge"><?php echo ucfirst($role); ?></span></p>
 
             <div class="mt-4">
+                <a href="create_booking" class="btn-action">🎫 Make a Booking View My Bookings</a>
                 <a href="view_bookings.php" class="btn-action">📅 View My Bookings</a>
                 <a href="edit_profile.php" class="btn-action">⚙ Edit Profile</a>
                 <a href="logout.php" class="btn-action">🚪 Logout</a>
