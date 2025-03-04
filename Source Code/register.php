@@ -3,7 +3,6 @@ session_start();
 include 'config.php';
 include 'navbar.php';
 
-
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
@@ -13,9 +12,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!in_array($role, ['admin', 'user'])) {
         $error = "Invalid role selection!";
-    } elseif ($password !== $confirm_password) {
-        $error = "Passwords do not match!";
-    } else {
+    } 
+    else {
+        $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+        $stmt->bind_param("ss", $username, $email);
+        $stmt->execute();
+        $stmt->store_result();
+        
+        if ($stmt->num_rows > 0) {
+            $error = "Username or Email already exists!";
+        } 
+        $stmt->close();
+    }
+
+    if (!$error) {
+        if (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password) || !preg_match('/[\W]/', $password)) {
+            $error = "Password must be at least 8 characters long, include at least one uppercase letter, one number, and one special character!";
+        } 
+        elseif ($password !== $confirm_password) {
+            $error = "Passwords do not match!";
+        }
+    }
+
+    
+    if (!$error) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
         $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
@@ -26,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             header("Location: login.php");
             exit();
         } else {
-            $error = "Email already exists!";
+            $error = "Something went wrong. Please try again!";
         }
 
         $stmt->close();
@@ -79,19 +99,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-3">
                     <label class="form-label">Password</label>
                     <input type="password" class="form-control" name="password" placeholder="Enter your password" required>
+                    <small class="text-light">Password must be 8+ characters, include an uppercase letter, a number, and a special character.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Confirm Password</label>
                     <input type="password" class="form-control" name="confirm_password" placeholder="Confirm your password" required>
                 </div>
                 <div class="mb-3">
-    <label class="form-label">Select Role</label>
-    <select name="role" class="form-select" required>
-        <option value="" selected disabled>-- Select Role --</option>
-        <option value="user">User</option>
-        <option value="admin">Admin</option>
-    </select>
-</div>
+                    <label class="form-label">Select Role</label>
+                    <select name="role" class="form-select" required>
+                        <option value="" selected disabled>-- Select Role --</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-register w-100">Register</button>
             </form>
             <p class="mt-3 text-center">Already have an account? <a href="login.php" class="login-link">Login here</a></p>
