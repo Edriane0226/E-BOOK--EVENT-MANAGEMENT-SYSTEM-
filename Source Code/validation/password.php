@@ -21,7 +21,7 @@ function password_validation($password) {
     if(!preg_match('/[A-Z]/', $password)){
         return 'password must contain atleast one lowecase and uppercase';
     }
-    
+     // Checks if the password contains atleast one number
     if(!preg_match('/[0-9]/', $password)){
         return 'password must contain at least one number';
     }
