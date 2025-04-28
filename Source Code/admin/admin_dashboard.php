@@ -7,8 +7,10 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 
-$query = "SELECT bookings.*, users.name, users.email FROM bookings 
-          JOIN users ON bookings.user_id = users.id ORDER BY event_date ASC";
+$query = "SELECT bookings.*, users.name, users.email, edit_requests.id AS edit_request_id FROM bookings 
+          INNER JOIN users ON bookings.user_id = users.id 
+          LEFT JOIN edit_requests ON bookings.id = edit_requests.booking_id 
+          ORDER BY bookings.event_date ASC";
 $result = $conn->query($query);
 ?>
 
@@ -20,7 +22,7 @@ $result = $conn->query($query);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(to right, #1e3c72, #2a5298);
+            background: black;
             font-family: 'Poppins', sans-serif;
             color: white;
         }
@@ -148,8 +150,12 @@ $result = $conn->query($query);
                             <td><?php echo htmlspecialchars($row['package']); ?></td>
                             <td><?php echo htmlspecialchars($row['message']); ?></td>
                             <td>
-                                <a href="edit_booking.php?id=<?php echo $row['id']; ?>" class="btn btn-warning btn-sm"><i class="fa fa-edit"></i> Edit</a>
-                                <a href="delete_booking.php?id=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?');"><i class="fa fa-trash"></i> Delete</a>
+                                <?php if ($row['edit_request_id']): ?>
+                                    <a href="confirm_edit.php?id=<?php echo $row['edit_request_id']; ?>&booking_id=<?php echo $row['id']; ?>" class="btn btn-success btn-sm"><i class="fa fa-check"></i> Confirm Edit</a>
+                                <?php else: ?>
+                                    <span class="text-success">No edit request</span>
+                                <?php endif; ?>
+                                <a href="delete_booking.php?id=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this booking?');"><i class="fa fa-trash"></i> Delete</a>
                             </td>
                         </tr>
                     <?php endwhile; ?>

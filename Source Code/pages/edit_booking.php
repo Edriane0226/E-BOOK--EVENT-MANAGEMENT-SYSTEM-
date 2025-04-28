@@ -23,14 +23,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $package = $_POST['package'];
     $message = $_POST['message'];
 
-    $stmt = $conn->prepare("UPDATE bookings SET event_type=?, event_date=?, guests=?, package=?, message=? WHERE id=?");
-    $stmt->bind_param("ssissi", $event_type, $event_date, $guests, $package, $message, $id);
-    
+    $user_id = $_SESSION['user_id'];
+    $stmt = $conn->prepare("INSERT INTO edit_requests (booking_id, user_id, event_type, event_date, guests, package, message) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("iississ", $id, $user_id, $event_type, $event_date, $guests, $package, $message);
+
     if ($stmt->execute()) {
-        echo "<script>alert('Booking updated successfully!'); window.location='dashboard.php';</script>";
+        echo "<script>alert('Edit request sent. Awaiting admin approval.'); window.location='dashboard.php';</script>";
         exit();
     } else {
-        echo "<script>alert('Error updating booking. Please try again.');</script>";
+        echo "<script>alert('Error submitting request. Try again.');</script>";
     }
 }
 ?>

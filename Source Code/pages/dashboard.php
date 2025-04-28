@@ -12,11 +12,6 @@ $user_id = $_SESSION['user_id'];
 
 $query = "SELECT profile_pic FROM users WHERE id = ?";
 $stmt = $conn->prepare($query);
-
-if (!$stmt) {
-    die("Database error: " . $conn->error);
-}
-
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user_result = $stmt->get_result();
@@ -24,9 +19,13 @@ $user = $user_result->fetch_assoc();
 $profile_pic = !empty($user['profile_pic']) ? "../uploads/" . $user['profile_pic'] : "../assets/default-profile.png";
 $profile_button_text = !empty($user['profile_pic']) ? "Change Profile" : "Upload Picture";
 
-$query = "SELECT * FROM bookings WHERE user_id = ? ORDER BY event_date ASC";
+$query = "SELECT b.*, 
+            (SELECT COUNT(*) FROM edit_requests er WHERE er.booking_id = b.id AND er.user_id = ?) AS pending_edit 
+          FROM bookings b 
+          WHERE b.user_id = ? 
+          ORDER BY b.event_date ASC";
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 ?>
