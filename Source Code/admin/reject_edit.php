@@ -8,13 +8,11 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 if (isset($_GET['id'])) {
-    $id = (int)$_GET['id'];
-
-    // Delete related payments first
-    $conn->query("DELETE FROM payments WHERE booking_id = $id");
-
-    // Now delete the booking
-    $conn->query("DELETE FROM bookings WHERE id = $id");
+    $id = intval($_GET['id']);
+    $stmt = $conn->prepare("UPDATE edit_requests SET status = 'rejected' WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
 }
 
 header("Location: admin_dashboard.php");

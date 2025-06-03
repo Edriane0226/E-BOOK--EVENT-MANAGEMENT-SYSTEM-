@@ -3,7 +3,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Get current page for navigation highlighting
 $current_page = basename($_SERVER['PHP_SELF']);
+
+// Check if user is authenticated via JWT
+$user_data = authenticateUser();
+$is_logged_in = ($user_data !== false);
 ?>
 
 <!DOCTYPE html>
@@ -99,6 +104,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             transform: translateY(-3px);
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #ff4b2b;
+            font-weight: bold;
+        }
+
         .navbar-nav .nav-item {
             opacity: 0;
             transform: translateY(15px);
@@ -111,6 +127,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         .navbar-nav .nav-item:nth-child(4) { animation-delay: 0.5s; }
         .navbar-nav .nav-item:nth-child(5) { animation-delay: 0.6s; }
         .navbar-nav .nav-item:nth-child(6) { animation-delay: 0.7s; }
+        .navbar-nav .nav-item:nth-child(7) { animation-delay: 0.8s; }
 
         @keyframes fadeIn {
             from {
@@ -130,6 +147,21 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
         .navbar-toggler-icon {
             filter: brightness(0) invert(1);
+        }
+
+        .dropdown-menu {
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid #ff4b2b;
+        }
+
+        .dropdown-item {
+            color: white !important;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, #ff4b2b, #ff1a1a);
+            color: white !important;
         }
     </style>
 </head>
@@ -152,8 +184,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <li class="nav-item"><a class="nav-link <?php echo ($current_page == 'about.php') ? 'active' : ''; ?>" href="about.php">About</a></li>
                 <li class="nav-item"><a class="nav-link <?php echo ($current_page == 'faq.php') ? 'active' : ''; ?>" href="faq.php">FAQ</a></li>
 
-                <?php if (!empty($_SESSION['user_id'])): ?>
-                    <li class="nav-item"><a class="nav-link btn btn-profile" href="dashboard.php">Profile</a></li>
+                <?php if ($is_logged_in): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle user-info" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span class="user-name"><?php echo htmlspecialchars($user_data['name'] ?? 'User'); ?></span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                            <li><a class="dropdown-item" href="booking.php"><i class="bi bi-calendar-plus"></i> New Booking</a></li>
+                            <li><a class="dropdown-item" href="payment.php"><i class="bi bi-credit-card"></i> Payment History</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                        </ul>
+                    </li>
                 <?php elseif ($current_page !== "login.php"): ?>
                     <li class="nav-item"><a class="nav-link btn btn-login" href="login.php">Login</a></li>
                 <?php endif; ?>

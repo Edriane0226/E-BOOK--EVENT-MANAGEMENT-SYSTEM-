@@ -1,30 +1,41 @@
 <?php
-session_start();
 include '../includes/config.php';
-include '../includes/header.php';
 
-if (!isset($_SESSION['user_id'])) {
+// Authenticate the user using JWT
+$user_data = authenticateUser();
+
+if (!$user_data) {
     header("Location: login.php");
     exit();
 }
 
+$user_id = $user_data['id'];
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $user_id = $_SESSION['user_id'];
     $event_type = $_POST['event_type'];
     $event_date = $_POST['event_date'];
     $guests = $_POST['guests'];
-    $package = $_POST['package'];
+    $package_id = $_POST['package'];
     $message = $_POST['message'];
 
-    $stmt = $conn->prepare("INSERT INTO bookings (user_id, event_type, event_date, guests, package, message) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ississ", $user_id, $event_type, $event_date, $guests, $package, $message);
+    $package_query = $conn->prepare("SELECT price FROM packages WHERE id = ?");
+    $package_query->bind_param("i", $package_id);
+    $package_query->execute();
+    $package_result = $package_query->get_result();
+    $package_data = $package_result->fetch_assoc();
+    $payment_amount = $package_data['price'];
+
+    $stmt = $conn->prepare("INSERT INTO bookings (user_id, event_type, event_date, guests, package_id, message, payment_amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issiisd", $user_id, $event_type, $event_date, $guests, $package_id, $message, $payment_amount);
 
     if ($stmt->execute()) {
         echo "<script>alert('Booking successful!'); window.location='dashboard.php';</script>";
+        exit();
     } else {
         echo "<script>alert('Booking failed!');</script>";
     }
 }
+include '../includes/header.php';
 ?>
 
 <!DOCTYPE html>
@@ -48,11 +59,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         border-radius: 12px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         transition: all 0.3s ease-in-out;
-    }
-
-    .booking-container:hover {
-        transform: scale(1.02);
-        box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2);
     }
 
     .form-control {
@@ -94,17 +100,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         font-size: 3rem;
         font-weight: bold;
     }
-
-    .fade-in {
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.6s ease-in-out;
-    }
-
-    .fade-in.visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
     </style>
 </head>
 <body>
@@ -145,9 +140,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="mb-3">
                         <label class="form-label fw-bold">Package</label>
                         <select name="package" class="form-control" required>
-                            <option value="Basic">Basic</option>
-                            <option value="Standard">Standard</option>
-                            <option value="Full Setup">Full Setup</option>
+                            <?php
+                            $result = $conn->query("SELECT id, name, price FROM packages");
+                            while ($row = $result->fetch_assoc()) {
+                                echo "<option value='{$row['id']}'>{$row['name']} - ₱{$row['price']}</option>";
+                            }
+                            ?>
                         </select>
                     </div>
 
@@ -164,20 +162,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </section>
 </body>
 </html>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const fadeInElements = document.querySelectorAll('.fade-in');
-
-        function revealOnScroll() {
-            fadeInElements.forEach(el => {
-                if (el.getBoundingClientRect().top < window.innerHeight - 50) {
-                    el.classList.add('visible');
-                }
-            });
-        }
-
-        window.addEventListener("scroll", revealOnScroll);
-        revealOnScroll();
-    });
-</script>

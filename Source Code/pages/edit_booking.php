@@ -1,31 +1,68 @@
 <?php
 session_start();
 include '../includes/config.php';
-include '../includes/header.php';
 
-if (!isset($_SESSION['user_id']) || !isset($_GET['id'])) {
+// Authenticate user using JWT
+$user_data = authenticateUser();
+
+if (!$user_data || !isset($_GET['id'])) {
     header("Location: dashboard.php");
     exit();
 }
 
+$user_id = $user_data['id'];
 $id = $_GET['id'];
-$query = "SELECT * FROM bookings WHERE id = ?";
+
+// Verify that this booking belongs to the authenticated user
+$query = "SELECT * FROM bookings WHERE id = ? AND user_id = ?";
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $id);
+$stmt->bind_param("ii", $id, $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $booking = $result->fetch_assoc();
+
+if (!$booking) {
+    header("Location: dashboard.php");
+    exit();
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $event_type = $_POST['event_type'];
     $event_date = $_POST['event_date'];
     $guests = $_POST['guests'];
-    $package = $_POST['package'];
-    $message = $_POST['message'];
+    $package_id = $_POST['package'];
+    $message = $_POST['message'] ?? '';
 
-    $user_id = $_SESSION['user_id'];
-    $stmt = $conn->prepare("INSERT INTO edit_requests (booking_id, user_id, event_type, event_date, guests, package, message) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("iississ", $id, $user_id, $event_type, $event_date, $guests, $package, $message);
+    // Assign original values to variables FIRST
+    $original_event_type = $booking['event_type'];
+    $original_event_date = $booking['event_date'];
+    $original_guests = $booking['guests'];
+    $original_message = isset($booking['message']) ? $booking['message'] : '';
+    $original_package_id = $booking['package_id'];
+
+    $stmt = $conn->prepare("
+        INSERT INTO edit_requests 
+        (booking_id, user_id, event_type, event_date, guests, package_id, message,
+         original_event_type, original_event_date, original_guests, original_message, original_package_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    // Use the separate variables here
+    $stmt->bind_param(
+        "iississssssi",
+        $id,
+        $user_id,
+        $event_type,
+        $event_date,
+        $guests,
+        $package_id,
+        $message,
+        $original_event_type,
+        $original_event_date,
+        $original_guests,
+        $original_message,
+        $original_package_id
+    );
 
     if ($stmt->execute()) {
         echo "<script>alert('Edit request sent. Awaiting admin approval.'); window.location='dashboard.php';</script>";
@@ -34,6 +71,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         echo "<script>alert('Error submitting request. Try again.');</script>";
     }
 }
+
+// Fetch packages for dropdown
+$packages_result = $conn->query("SELECT id, name, price FROM packages");
+
+// Include header AFTER all authentication and form processing
+include '../includes/header.php';
 ?>
 
 <!DOCTYPE html>
@@ -42,7 +85,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Booking</title>
-
     <style>
     body {
         background-color: #121212;
@@ -104,7 +146,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         font-size: 3rem;
         font-weight: bold;
     }
-</style>
+
+    .fade-in {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.6s ease-in-out;
+    }
+
+    .fade-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    </style>
 </head>
 <body>
 <section class="page-header text-white">
@@ -116,7 +169,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <section class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
+        <div class="col-md-6 fade-in">
             <div class="booking-container">
                 <h3 class="text-center fw-bold text-primary mb-3">Update Your Event</h3>
                 <form method="post">
@@ -143,9 +196,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="mb-3">
                         <label class="form-label fw-bold">Package</label>
                         <select name="package" class="form-control" required>
-                            <option value="Basic" <?= $booking['package'] === 'Basic' ? 'selected' : '' ?>>Basic</option>
-                            <option value="Standard" <?= $booking['package'] === 'Standard' ? 'selected' : '' ?>>Standard</option>
-                            <option value="Full Setup" <?= $booking['package'] === 'Full Setup' ? 'selected' : '' ?>>Full Setup</option>
+                            <?php while ($row = $packages_result->fetch_assoc()): ?>
+                                <option value="<?= $row['id'] ?>" <?= ($row['id'] == $booking['package_id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($row['name']) ?> - ₱<?= $row['price'] ?>
+                                </option>
+                            <?php endwhile; ?>
                         </select>
                     </div>
 
@@ -155,10 +210,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
 
                     <button type="submit" class="btn btn-custom text-white fw-bold">Update Booking</button>
+                    <a href="dashboard.php" class="btn btn-secondary w-100 mt-2">Cancel</a>
                 </form>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const fadeInElements = document.querySelectorAll('.fade-in');
+
+        function revealOnScroll() {
+            fadeInElements.forEach(el => {
+                if (el.getBoundingClientRect().top < window.innerHeight - 50) {
+                    el.classList.add('visible');
+                }
+            });
+        }
+
+        window.addEventListener("scroll", revealOnScroll);
+        revealOnScroll();
+    });
+</script>
 </body>
 </html>

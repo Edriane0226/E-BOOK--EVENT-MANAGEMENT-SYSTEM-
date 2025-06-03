@@ -1,40 +1,50 @@
 <?php
-session_start();
-include '../includes/config.php';
-include '../includes/header.php';
+include '../includes/config.php'; // database connection
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+$error = '';
+$success = false;
 
-    if (empty($email) || empty($password)) {
-        echo "<script>alert('Please fill in both fields!');</script>";
+// Handle form submission (POST request)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+
+    if (!$email || !$password) {
+        $error = 'Email and password required';
     } else {
-        try {
-            $stmt = $conn->prepare("SELECT id, name, password FROM users WHERE email=?");
-            if ($stmt === false) {
-                throw new Exception("Failed to prepare statement: " . $conn->error);
-            }
+        // Fetch id, password, and name from users table
+        $stmt = $conn->prepare("SELECT id, password, name FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result->num_rows === 1) {
-                $user = $result->fetch_assoc();
-                if (password_verify($password, $user['password'])) {
-                    
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['user_name'] = $user['name'];
-                    echo "<script>window.location='dashboard.php';</script>";
-                } else {
-                    echo "<script>alert('Invalid password!');</script>";
-                }
+        if ($result->num_rows === 0) {
+            $error = 'Invalid credentials';
+        } else {
+            $user = $result->fetch_assoc();
+            
+            if (!password_verify($password, $user['password'])) {
+                $error = 'Incorrect password';
             } else {
-                echo "<script>alert('User  not found!');</script>";
+                // Login successful - generate JWT token
+                $user_data = [
+                    'id' => $user['id'],
+                    'email' => $email,
+                    'name' => $user['name']
+                ];
+                
+                $jwt_token = generateJWT($user_data);
+                
+                // Store JWT in session
+                $_SESSION['jwt_token'] = $jwt_token;
+                
+                // Debug: Check if token is generated (remove this after testing)
+                error_log("JWT token generated for user: " . $user['name']);
+                
+                // Redirect to dashboard
+                header("Location: dashboard.php");
+                exit;
             }
-        } catch (Exception $e) {
-            echo "<script>alert('An error occurred: " . htmlspecialchars($e->getMessage()) . "');</script>";
         }
     }
 }
@@ -45,6 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>Login</title>
     <style>
     body {
@@ -117,10 +128,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="col-md-6 fade-in">
             <div class="login-form">
                 <h3 class="text-center mb-4">Sign In</h3>
+                
+                <?php if ($error): ?>
+                    <div class="alert alert-danger">
+                        <?php echo htmlspecialchars($error); ?>
+                    </div>
+                <?php endif; ?>
+                
                 <form action="" method="post">
                     <div class="mb-3">
                         <label for="email" class="form-label fw-bold">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="Enter your email" required>
+                        <input type="email" name="email" class="form-control" placeholder="Enter your email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label fw-bold">Password</label>
@@ -133,8 +151,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 </section>
-</body>
-</html>
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -152,4 +168,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         revealOnScroll();
     });
 </script>
-
+</body>
+</html>

@@ -17,7 +17,4 @@ $conn->set_charset("utf8");
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-// Include JWT utilities
-require_once __DIR__ . '/../includes/jwt_utils.php';
 ?>

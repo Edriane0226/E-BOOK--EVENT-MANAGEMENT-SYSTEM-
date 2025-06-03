@@ -54,21 +54,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         transition: all 0.3s ease-in-out;
     }
 
-    .auth-container:hover {
-        transform: scale(1.02);
-        box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2);
-    }
-
     .form-control {
         background: #222;
         border: 1px solid #ff4b2b;
         color: #fff;
         transition: 0.3s;
-    }
-
-    .form-control:focus {
-        border-color: #ff416c;
-        box-shadow: 0 0 10px rgba(255, 65, 108, 0.5);
     }
 
     .btn-glow {
@@ -84,16 +74,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         transform: scale(1.05);
     }
 
-    .fade-in {
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.6s ease-in-out;
-    }
-
-    .fade-in.visible {
-        opacity: 1;
-        transform: translateY(0);
-    }
 </style>
 </head>
 <body>
